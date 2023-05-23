@@ -91,13 +91,14 @@ def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, Molecu
             # Compute metrics
             auc = roc_auc_score(y_test, y_score[:, 1])
             aucs.append(auc)
-            logging.info(f"Fold {i_fold} - Test AUC: {auc}")
+            logging.info(f"Fold {i_fold} - Test AUC: {auc:.3f}")
 
             results["Transformer"].append(name)
             results["Fold"].append(i_fold)
             results["Test AUC"].append(auc)
 
         mean_auc = np.mean(aucs)
+        logging.info(f"Mean Test AUC: {mean_auc:.3f}")
         if mean_auc > best_auc:
             best_auc = mean_auc
             best_model = model
