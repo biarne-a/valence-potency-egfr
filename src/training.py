@@ -1,3 +1,4 @@
+import itertools
 import logging
 from collections import defaultdict
 from typing import Dict, List
@@ -12,10 +13,11 @@ from sklearn.model_selection import GroupShuffleSplit
 
 
 class TrainingResult:
-    def __init__(self, results_df: pd.DataFrame, best_model: CatBoostClassifier, best_auc: float):
+    def __init__(self, results_df: pd.DataFrame, best_auc: float, best_y_test: np.array, best_y_score: np.array):
         self.results_df = results_df
-        self.best_model = best_model
         self.best_auc = best_auc
+        self.best_y_test = best_y_test
+        self.best_y_score = best_y_score
 
     @property
     def best_transformer(self):
@@ -68,7 +70,6 @@ def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, Molecu
     """
     scaffolds = _get_scaffolds(smiles)
     results = defaultdict(list)
-    best_model = None
     best_auc = 0.0
     for name, transformer in transformers.items():
         # Transform features
@@ -76,6 +77,8 @@ def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, Molecu
         X = _transform_smiles(smiles, transformer)
         splitter = _get_cv_splitter(scaffolds, smiles)
         aucs = []
+        all_y_test = []
+        all_y_score = []
         for i_fold, (train_indices, test_indices) in enumerate(splitter):
             # Split data
             X_train, X_test = X[train_indices], X[test_indices]
@@ -87,21 +90,26 @@ def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, Molecu
 
             # Predict
             y_score = model.predict_proba(X_test)
+            pos_y_score = y_score[:, 1]
 
             # Compute metrics
-            auc = roc_auc_score(y_test, y_score[:, 1])
+            auc = roc_auc_score(y_test, pos_y_score)
             aucs.append(auc)
             logging.info(f"Fold {i_fold} - Test AUC: {auc:.3f}")
 
+            # Save metrics
             results["Transformer"].append(name)
             results["Fold"].append(i_fold)
             results["Test AUC"].append(auc)
+            all_y_test.append(y_test)
+            all_y_score.append(pos_y_score)
 
         mean_auc = np.mean(aucs)
         logging.info(f"Mean Test AUC: {mean_auc:.3f}")
         if mean_auc > best_auc:
             best_auc = mean_auc
-            best_model = model
+            best_y_test = itertools.chain.from_iterable(all_y_test)
+            best_y_score = itertools.chain.from_iterable(all_y_score)
 
     results_df = pd.DataFrame(results)
-    return TrainingResult(results_df, best_model, best_auc)
+    return TrainingResult(results_df, best_auc, best_y_test, best_y_score)
