@@ -21,8 +21,8 @@ class TrainingResult:
 
     @property
     def best_transformer(self):
-        test_aucs = self.results_df["Test AUC"]
-        best_row = self.results_df[test_aucs == test_aucs.max()]
+        mean_test_aucs = self.results_df["Mean Test AUC"]
+        best_row = self.results_df[mean_test_aucs == mean_test_aucs.max()]
         return best_row["Transformer"].values[0]
 
 
@@ -57,6 +57,13 @@ def _transform_smiles(smiles: np.array, transformer: MoleculeTransformer) -> np.
 
 def _new_regression_model() -> CatBoostClassifier:
     return CatBoostClassifier(iterations=3000, depth=6, loss_function="Logloss", verbose=False)
+
+
+def _add_mean_test_auc(results) -> pd.DataFrame:
+    results_df = pd.DataFrame(results)
+    mean_aucs = results_df.groupby("Transformer")["Test AUC"].mean()
+    mean_aucs_df = pd.DataFrame({"Mean Test AUC": mean_aucs})
+    return results_df.set_index("Transformer").join(mean_aucs_df)
 
 
 def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, MoleculeTransformer]) -> TrainingResult:
@@ -108,8 +115,8 @@ def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, Molecu
         logging.info(f"Mean Test AUC: {mean_auc:.3f}")
         if mean_auc > best_auc:
             best_auc = mean_auc
-            best_y_test = itertools.chain.from_iterable(all_y_test)
-            best_y_score = itertools.chain.from_iterable(all_y_score)
+            best_y_test = list(itertools.chain.from_iterable(all_y_test))
+            best_y_score = list(itertools.chain.from_iterable(all_y_score))
 
-    results_df = pd.DataFrame(results)
+    results_df = _add_mean_test_auc(results)
     return TrainingResult(results_df, best_auc, best_y_test, best_y_score)
