@@ -37,15 +37,19 @@ def _new_catboost_model() -> CatBoostClassifier:
 
 
 def _new_vec_pipeline(kind: str) -> VecCatBoostPipeline:
-    return Pipeline(mol_transformer=FPVecTransformer(kind, n_jobs=-1), model=_new_catboost_model())
+    return VecCatBoostPipeline(mol_transformer=FPVecTransformer(kind, n_jobs=-1), model=_new_catboost_model())
 
 
 def _new_hf_pipeline(kind) -> VecCatBoostPipeline:
-    return Pipeline(mol_transformer=PretrainedHFTransformer(kind, notation="smiles"), model=_new_catboost_model())
+    return VecCatBoostPipeline(
+        mol_transformer=PretrainedHFTransformer(kind, notation="smiles"), model=_new_catboost_model()
+    )
 
 
 def _new_dgl_pipeline(kind) -> VecCatBoostPipeline:
-    return Pipeline(mol_transformer=PretrainedDGLTransformer(kind=kind, dtype=float), model=_new_catboost_model())
+    return VecCatBoostPipeline(
+        mol_transformer=PretrainedDGLTransformer(kind=kind, dtype=float), model=_new_catboost_model()
+    )
 
 
 def _new_pna_pipeline() -> PNAPipeline:
