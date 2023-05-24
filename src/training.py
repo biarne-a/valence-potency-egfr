@@ -6,10 +6,10 @@ from typing import Dict, List
 import datamol as dm
 import numpy as np
 import pandas as pd
-from catboost import CatBoostClassifier
-from molfeat.trans import MoleculeTransformer
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import GroupShuffleSplit
+
+from pipeline import Pipeline
 
 
 class TrainingResult:
@@ -46,19 +46,6 @@ def _get_cv_splitter(scaffolds: List[str], smiles: np.array):
     return GroupShuffleSplit(n_splits=5, test_size=0.2, random_state=42).split(smiles, groups=scaffolds)
 
 
-def _transform_smiles(smiles: np.array, transformer: MoleculeTransformer) -> np.array:
-    """
-    Takes as input the smile strings and apply a given molecule transformer.
-    The result is a numpy array of dimension (number of molecules, dimension of a featurized module)
-    """
-    features, indices = transformer(smiles, ignore_errors=True)
-    return np.array(features)[indices]
-
-
-def _new_regression_model() -> CatBoostClassifier:
-    return CatBoostClassifier(iterations=3000, depth=6, loss_function="Logloss", verbose=False)
-
-
 def _add_mean_test_auc(results) -> pd.DataFrame:
     results_df = pd.DataFrame(results)
     mean_aucs = results_df.groupby("Transformer")["Test AUC"].mean()
@@ -66,10 +53,10 @@ def _add_mean_test_auc(results) -> pd.DataFrame:
     return results_df.set_index("Transformer").join(mean_aucs_df)
 
 
-def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, MoleculeTransformer]) -> TrainingResult:
+def cross_validate(smiles: np.array, y: np.array, pipelines: Dict[str, Pipeline]) -> TrainingResult:
     """
     Assess the best transformer to use for the prediction with scaffold cross validation.
-    :param transformers: Dictionary of transformers that we want to assess for molecule featurization
+    :param pipelines: Dictionary of pipelines that we want to assess for molecule featurization + modeling
     :param smiles: List of modules in their smile string representation
     :param y: The target we want to predict (pIC50 > 8)
     :return: A TrainingResult instance from which we can extract the metric of interest (MAE in this case)
@@ -78,29 +65,26 @@ def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, Molecu
     scaffolds = _get_scaffolds(smiles)
     results = defaultdict(list)
     best_auc = 0.0
-    for name, transformer in transformers.items():
+    for name, pipeline in pipelines.items():
         # Transform features
         logging.info(f"Transforming features with transformer: {name}")
-        X = _transform_smiles(smiles, transformer)
+        X = pipeline.transform_smiles(smiles)
         splitter = _get_cv_splitter(scaffolds, smiles)
         aucs = []
         all_y_test = []
         all_y_score = []
         for i_fold, (train_indices, test_indices) in enumerate(splitter):
             # Split data
-            X_train, X_test = X[train_indices], X[test_indices]
-            y_train, y_test = y[train_indices], y[test_indices]
+            X_train, X_test, y_train, y_test = pipeline.split_data(X, y, train_indices, test_indices)
 
             # Fit model
-            model = _new_regression_model()
-            model.fit(X_train, y_train)
+            pipeline.fit(X_train, y_train)
 
             # Predict
-            y_score = model.predict_proba(X_test)
-            pos_y_score = y_score[:, 1]
+            y_score = pipeline.predict_proba(X_test, y_test)
 
             # Compute metrics
-            auc = roc_auc_score(y_test, pos_y_score)
+            auc = roc_auc_score(y_test, y_score)
             aucs.append(auc)
             logging.info(f"Fold {i_fold} - Test AUC: {auc:.3f}")
 
@@ -109,7 +93,7 @@ def cross_validate(smiles: np.array, y: np.array, transformers: Dict[str, Molecu
             results["Fold"].append(i_fold)
             results["Test AUC"].append(auc)
             all_y_test.append(y_test)
-            all_y_score.append(pos_y_score)
+            all_y_score.append(y_score)
 
         mean_auc = np.mean(aucs)
         logging.info(f"Mean Test AUC: {mean_auc:.3f}")

@@ -6,7 +6,7 @@ import warnings
 import datamol as dm
 
 from data import load_and_prepare_dataset, preprocess_smiles
-from mol_transformers import get_transformers
+from pipeline_factory import get_pipelines
 from training import cross_validate
 
 
@@ -20,7 +20,7 @@ def silence_warnings():
 def main():
     smiles, y = load_and_prepare_dataset()
     smiles = preprocess_smiles(smiles)
-    transformers = get_transformers()
+    transformers = get_pipelines()
     cv_results = cross_validate(smiles, y, transformers)
     logging.info("Cross validation performed")
     logging.info(f"Best model AUC: {cv_results.best_auc}")
