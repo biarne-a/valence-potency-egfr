@@ -26,7 +26,7 @@ class VecCatBoostPipeline(Pipeline):
     def fit(self, X, y):
         return self.model.fit(X, y)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, y):
         y_score = self.model.predict_proba(X)
         pos_y_score = y_score[:, 1]
         return pos_y_score
