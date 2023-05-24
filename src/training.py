@@ -23,7 +23,7 @@ class TrainingResult:
     def best_transformer(self):
         mean_test_aucs = self.results_df["Mean Test AUC"]
         best_row = self.results_df[mean_test_aucs == mean_test_aucs.max()]
-        return best_row["Transformer"].values[0]
+        return best_row.index.values[0]
 
 
 def _get_scaffolds(smiles) -> List[str]:
