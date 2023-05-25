@@ -1,7 +1,7 @@
 import itertools
 import logging
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import datamol as dm
 import numpy as np
@@ -13,11 +13,10 @@ from pipeline import Pipeline
 
 
 class TrainingResult:
-    def __init__(self, results_df: pd.DataFrame, best_auc: float, best_y_test: np.array, best_y_score: np.array):
+    def __init__(self, results_df: pd.DataFrame, best_auc: float, predictions: Dict[str, Tuple[np.array, np.array]]):
         self.results_df = results_df
         self.best_auc = best_auc
-        self.best_y_test = best_y_test
-        self.best_y_score = best_y_score
+        self.predictions = predictions
 
     @property
     def best_transformer(self):
@@ -65,6 +64,7 @@ def cross_validate(smiles: np.array, y: np.array, pipelines: Dict[str, Pipeline]
     scaffolds = _get_scaffolds(smiles)
     results = defaultdict(list)
     best_auc = 0.0
+    predictions = {}
     for name, pipeline in pipelines.items():
         # Transform features
         logging.info(f"Transforming features with transformer: {name}")
@@ -95,12 +95,14 @@ def cross_validate(smiles: np.array, y: np.array, pipelines: Dict[str, Pipeline]
             all_y_test.append(y_test)
             all_y_score.append(y_score)
 
+        all_y_test = list(itertools.chain.from_iterable(all_y_test))
+        all_y_score = list(itertools.chain.from_iterable(all_y_score))
+        predictions[name] = (all_y_test, all_y_score)
+
         mean_auc = np.mean(aucs)
         logging.info(f"Mean Test AUC: {mean_auc:.3f}")
         if mean_auc > best_auc:
             best_auc = mean_auc
-            best_y_test = list(itertools.chain.from_iterable(all_y_test))
-            best_y_score = list(itertools.chain.from_iterable(all_y_score))
 
     results_df = _add_mean_test_auc(results)
-    return TrainingResult(results_df, best_auc, best_y_test, best_y_score)
+    return TrainingResult(results_df, best_auc, predictions)
