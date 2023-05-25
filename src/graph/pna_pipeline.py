@@ -113,10 +113,10 @@ class PNAPipeline(Pipeline):
                 y_hat = torch.cat(y_hat).numpy()
                 y_true = torch.cat(y_true).numpy()
                 auc = roc_auc_score(y_true, y_hat)
-                pbar.set_description(f"Epoch {epoch} - Loss {mean_train_loss:.3f} - AUC {auc:.3f}")
+                pbar.set_description(f"Epoch {epoch} - Train Loss {mean_train_loss:.3f} - Train AUC {auc:.3f}")
 
     def predict_proba(self, X, y):
-        _, test_loader = build_dataset(self._transformer, X, y, shuffle=True)
+        _, test_loader = build_dataset(self._transformer, X, y, shuffle=False)
         model = self._get_model()
         model.eval()
         preds = []
