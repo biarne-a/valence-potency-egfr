@@ -9,6 +9,8 @@ from molfeat.trans.pretrained.hf_transformers import PretrainedHFTransformer
 from graph.augmenter import (
     Augmenter,
     RndAtomMaskAugmenter,
+    RndBondDeleteAugmenter,
+    RndMotifRemovalAugmenter,
 )
 from graph.pna_pipeline import PNAPipeline
 from pipeline import Pipeline
