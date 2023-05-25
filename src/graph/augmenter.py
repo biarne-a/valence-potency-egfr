@@ -1,8 +1,7 @@
 import math
 import random
-from builtins import Exception
 from copy import deepcopy
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import torch
 from molfeat.trans.graph.adj import PYGGraphTransformer
@@ -128,7 +127,9 @@ class OneOfAugmenter(Augmenter):
         return augmenter.augment(data)
 
 
-def augmenter_factory(kind: str, transformer: PYGGraphTransformer = None, smiles: List[str] = None) -> Augmenter:
+def augmenter_factory(
+    kind: str, transformer: PYGGraphTransformer = None, smiles: List[str] = None
+) -> Optional[Augmenter]:
     if kind == "rnd-mask":
         return RndAtomMaskAugmenter()
     if kind == "rnd-bond":
@@ -139,4 +140,4 @@ def augmenter_factory(kind: str, transformer: PYGGraphTransformer = None, smiles
         return ComposableAugmenter([RndAtomMaskAugmenter(), RndBondDeleteAugmenter()])
     if kind == "rnd-one-off":
         return OneOfAugmenter([RndAtomMaskAugmenter(), RndBondDeleteAugmenter()])
-    raise Exception(f"Unknown augmenter kind: {kind}")
+    return None
