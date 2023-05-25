@@ -6,6 +6,10 @@ from molfeat.trans import FPVecTransformer, MoleculeTransformer
 from molfeat.trans.pretrained.dgl_pretrained import PretrainedDGLTransformer
 from molfeat.trans.pretrained.hf_transformers import PretrainedHFTransformer
 
+from graph.augmenter import (
+    Augmenter,
+    RndAtomMaskAugmenter,
+)
 from graph.pna_pipeline import PNAPipeline
 from pipeline import Pipeline
 
@@ -52,8 +56,8 @@ def _new_dgl_pipeline(kind) -> VecCatBoostPipeline:
     )
 
 
-def _new_pna_pipeline() -> PNAPipeline:
-    return PNAPipeline()
+def _new_pna_pipeline(augmenter: Augmenter = None) -> PNAPipeline:
+    return PNAPipeline(augmenter)
 
 
 def get_pipelines() -> Dict[str, Pipeline]:
@@ -66,4 +70,9 @@ def get_pipelines() -> Dict[str, Pipeline]:
         "gin_supervised_infomax": _new_dgl_pipeline("gin_supervised_infomax"),
         "gin_supervised_edgepred": _new_dgl_pipeline("gin_supervised_edgepred"),
         "PNA": _new_pna_pipeline(),
+        "PNA-rnd-mask-aug": _new_pna_pipeline(RndAtomMaskAugmenter()),
+        "PNA-rnd-bond-aug": _new_pna_pipeline(RndBondDeleteAugmenter()),
+        "PNA-rnd-struct-aug": _new_pna_pipeline(RndMotifRemovalAugmenter()),
+        "PNA-rnd-comp-aug": _new_pna_pipeline([RndAtomMaskAugmenter(), RndBondDeleteAugmenter()]),
+        "PNA-rnd-one-off-aug": _new_pna_pipeline([RndAtomMaskAugmenter(), RndBondDeleteAugmenter()]),
     }

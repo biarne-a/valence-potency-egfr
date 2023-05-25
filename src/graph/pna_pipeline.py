@@ -15,6 +15,7 @@ from torch_geometric.nn.models import PNA
 from torch_geometric.utils import degree
 from tqdm import tqdm
 
+from graph.augmenter import Augmenter
 from graph.mol_dataset import build_dataset
 from pipeline import Pipeline
 
@@ -26,9 +27,10 @@ class PNAPipeline(Pipeline):
     PNA_AGGREGATORS = ["mean", "min", "max", "std"]
     PNA_SCALERS = ["identity", "amplification", "attenuation"]
 
-    def __init__(self):
+    def __init__(self, augmenter: Augmenter = None):
         self._transformer = PYGGraphTransformer(atom_featurizer=AtomCalculator(), bond_featurizer=EdgeMatCalculator())
         self._transformer.auto_self_loop()
+        self._augmenter = augmenter
         self._model = None
 
     def transform_smiles(self, smiles: np.array) -> np.array:
@@ -83,7 +85,7 @@ class PNAPipeline(Pipeline):
         return F.sigmoid(out)
 
     def fit(self, X, y):
-        train_dt, train_loader = build_dataset(self._transformer, X, y, shuffle=True)
+        train_dt, train_loader = build_dataset(self._transformer, X, y, self._augmenter, shuffle=True)
         model = self._get_model(X)
 
         loss_fn = BCELoss()
