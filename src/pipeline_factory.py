@@ -6,12 +6,7 @@ from molfeat.trans import FPVecTransformer, MoleculeTransformer
 from molfeat.trans.pretrained.dgl_pretrained import PretrainedDGLTransformer
 from molfeat.trans.pretrained.hf_transformers import PretrainedHFTransformer
 
-from graph.augmenter import (
-    Augmenter,
-    RndAtomMaskAugmenter,
-    RndBondDeleteAugmenter,
-    RndMotifRemovalAugmenter,
-)
+from graph.augmenter import Augmenter, RndAtomMaskAugmenter, RndBondDeleteAugmenter, RndMotifRemovalAugmenter
 from graph.pna_pipeline import PNAPipeline
 from pipeline import Pipeline
 
@@ -29,11 +24,11 @@ class VecCatBoostPipeline(Pipeline):
         features, indices = self.mol_transformer(smiles, ignore_errors=True)
         return np.array(features)[indices]
 
-    def fit(self, X, y):
-        return self.model.fit(X, y)
+    def fit(self, X_train, y_train):
+        return self.model.fit(X_train, y_train)
 
-    def predict_proba(self, X, y):
-        y_score = self.model.predict_proba(X)
+    def predict_proba(self, X_test, y_test):
+        y_score = self.model.predict_proba(X_test)
         pos_y_score = y_score[:, 1]
         return pos_y_score
 
@@ -59,7 +54,7 @@ def _new_dgl_pipeline(kind) -> VecCatBoostPipeline:
 
 
 def _new_pna_pipeline(augmenter: Augmenter = None) -> PNAPipeline:
-    return PNAPipeline(augmenter)
+    return PNAPipeline(augmenter=augmenter)
 
 
 def get_pipelines() -> Dict[str, Pipeline]:

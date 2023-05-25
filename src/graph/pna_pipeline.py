@@ -22,14 +22,23 @@ from pipeline import Pipeline
 
 class PNAPipeline(Pipeline):
     DEVICE = "cpu"
-    NUM_EPOCHS = 60
-    LEARNING_RATE = 5e-4
     PNA_AGGREGATORS = ["mean", "min", "max", "std"]
     PNA_SCALERS = ["identity", "amplification", "attenuation"]
 
-    def __init__(self, augmenter: Augmenter = None):
+    def __init__(
+        self,
+        num_epochs: int = 500,
+        learning_rate: float = 5e-4,
+        lr_step_size: int = 10,
+        lr_gamma: float = 1.0,
+        augmenter: Augmenter = None,
+    ):
         self._transformer = PYGGraphTransformer(atom_featurizer=AtomCalculator(), bond_featurizer=EdgeMatCalculator())
         self._transformer.auto_self_loop()
+        self._num_epochs = num_epochs
+        self._learning_rate = learning_rate
+        self._lr_step_size = lr_step_size
+        self._lr_gamma = lr_gamma
         self._augmenter = augmenter
         self._model = None
 
@@ -84,41 +93,90 @@ class PNAPipeline(Pipeline):
         out = global_add_pool(out, data.batch)
         return F.sigmoid(out)
 
-    def fit(self, X, y):
-        train_dt, train_loader = build_dataset(self._transformer, X, y, self._augmenter, shuffle=True)
-        model = self._get_model(X)
+    def _compute_auc(self, y_hat, y_true):
+        y_hat = torch.cat(y_hat).numpy()
+        y_true = torch.cat(y_true).numpy()
+        train_auc = roc_auc_score(y_true, y_hat)
+        return train_auc
 
+    def _train_one_epoch(self, loss_fn, model, optimizer, train_loader):
+        model.train()
+        losses = []
+        y_hat = []
+        y_true = []
+        for data in train_loader:
+            data = data.to(self.DEVICE)
+            optimizer.zero_grad()
+            out = self.forward(data)
+            loss = loss_fn(out.squeeze(), data.y)
+            loss.backward()
+            optimizer.step()
+            # save metrics
+            losses.append(loss.item())
+            y_hat.append(out.detach().cpu().squeeze())
+            y_true.append(data.y)
+        return np.mean(losses), y_hat, y_true
+
+    def _eval_one_epoch(self, loss_fn, model, test_loader):
+        model.eval()
+        losses = []
+        test_y_hat = []
+        test_y_true = []
+        with torch.no_grad():
+            for data in test_loader:
+                data = data.to(self.DEVICE)
+                out = model(data.x, data.edge_index, edge_attr=data.edge_attr)
+                out = global_add_pool(out, data.batch)
+                out = F.sigmoid(out)
+                loss = loss_fn(out.squeeze(), data.y)
+                losses.append(loss.item())
+                test_y_hat.append(out.detach().cpu().squeeze())
+                test_y_true.append(data.y)
+        return np.mean(losses), test_y_hat, test_y_true
+
+    def fit(self, X_train, y_train, X_test=None, y_test=None):
+        train_loader = build_dataset(self._transformer, X_train, y_train, self._augmenter, shuffle=True)
+        test_loader = None
+        if X_test is not None:
+            test_loader = build_dataset(self._transformer, X_test, y_test, shuffle=False)
+
+        train_aucs = []
+        test_aucs = []
         loss_fn = BCELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=self.LEARNING_RATE)
-        lr_scheduler = StepLR(optimizer, step_size=10, gamma=1.0)
-        with tqdm(range(self.NUM_EPOCHS)) as pbar:
+        model = self._get_model(X_train)
+        optimizer = torch.optim.Adam(model.parameters(), lr=self._learning_rate)
+        lr_scheduler = StepLR(optimizer, step_size=self._lr_step_size, gamma=self._lr_gamma)
+        with tqdm(range(self._num_epochs)) as pbar:
             for epoch in pbar:
-                losses = []
-                y_hat = []
-                y_true = []
-                model.train()
-                for data in train_loader:
-                    data = data.to(self.DEVICE)
-                    optimizer.zero_grad()
-                    out = self.forward(data)
-                    loss = loss_fn(out.squeeze(), data.y)
-                    loss.backward()
-                    optimizer.step()
-                    # save metrics
-                    losses.append(loss.item())
-                    y_hat.append(out.detach().cpu().squeeze())
-                    y_true.append(data.y)
+                # Perform one epoch on training data
+                mean_train_loss, train_y_hat, train_y_true = self._train_one_epoch(
+                    loss_fn, model, optimizer, train_loader
+                )
 
                 lr_scheduler.step()
 
-                mean_train_loss = np.mean(losses)
-                y_hat = torch.cat(y_hat).numpy()
-                y_true = torch.cat(y_true).numpy()
-                auc = roc_auc_score(y_true, y_hat)
-                pbar.set_description(f"Epoch {epoch} - Train Loss {mean_train_loss:.3f} - Train AUC {auc:.3f}")
+                # Compute training metrics
+                train_auc = self._compute_auc(train_y_hat, train_y_true)
+                train_aucs.append(train_auc)
 
-    def predict_proba(self, X, y):
-        _, test_loader = build_dataset(self._transformer, X, y, shuffle=False)
+                if test_loader is not None:
+                    mean_test_loss, test_y_hat, test_y_true = self._eval_one_epoch(loss_fn, model, test_loader)
+
+                    # Compute test metrics
+                    test_auc = self._compute_auc(test_y_hat, test_y_true)
+                    test_aucs.append(test_auc)
+
+                    pbar.set_description(
+                        f"Epoch {epoch} - Train Loss {mean_train_loss:.3f} - Test Loss {mean_test_loss:.3f}"
+                        f"- AUC Train {train_auc:.3f} - AUC Test {test_auc:.3f} "
+                    )
+                else:
+                    pbar.set_description(
+                        f"Epoch {epoch} - Train Loss {mean_train_loss:.3f} - AUC Train {train_auc:.3f} "
+                    )
+
+    def predict_proba(self, X_test, y_test):
+        test_loader = build_dataset(self._transformer, X_test, y_test, shuffle=False)
         model = self._get_model()
         model.eval()
         preds = []

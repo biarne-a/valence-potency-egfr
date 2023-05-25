@@ -9,10 +9,10 @@ class Pipeline:
         """
         raise NotImplementedError
 
-    def fit(self, X: np.array, y: np.array):
+    def fit(self, X_train: np.array, y_train: np.array):
         raise NotImplementedError
 
-    def predict_proba(self, X: np.array, y: np.array):
+    def predict_proba(self, X_test: np.array, y_test: np.array):
         raise NotImplementedError
 
     def split_data(self, X, y, train_indices, test_indices):
