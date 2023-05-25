@@ -21,7 +21,7 @@ from pipeline import Pipeline
 
 class PNAPipeline(Pipeline):
     DEVICE = "cpu"
-    NUM_EPOCHS = 120
+    NUM_EPOCHS = 60
     LEARNING_RATE = 5e-4
     PNA_AGGREGATORS = ["mean", "min", "max", "std"]
     PNA_SCALERS = ["identity", "amplification", "attenuation"]
