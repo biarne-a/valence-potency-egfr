@@ -43,7 +43,7 @@ def _get_cv_splitter(scaffolds: List[str], smiles: np.array):
     performance under more realistic screening settings (where the model will be applied on molecules with scaffolds
     unseen during training).
     """
-    return GroupShuffleSplit(n_splits=5, test_size=0.2, random_state=42).split(smiles, groups=scaffolds)
+    return GroupShuffleSplit(n_splits=3, test_size=0.2, random_state=42).split(smiles, groups=scaffolds)
 
 
 def _add_mean_test_auc(results) -> pd.DataFrame:
