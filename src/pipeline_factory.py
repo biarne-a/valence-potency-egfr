@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import numpy as np
 from catboost import CatBoostClassifier
@@ -6,7 +6,6 @@ from molfeat.trans import FPVecTransformer, MoleculeTransformer
 from molfeat.trans.pretrained.dgl_pretrained import PretrainedDGLTransformer
 from molfeat.trans.pretrained.hf_transformers import PretrainedHFTransformer
 
-from graph.augmenter import Augmenter, RndAtomMaskAugmenter, RndBondDeleteAugmenter, RndMotifRemovalAugmenter
 from graph.pna_pipeline import PNAPipeline
 from pipeline import Pipeline
 
@@ -53,11 +52,11 @@ def _new_dgl_pipeline(kind) -> VecCatBoostPipeline:
     )
 
 
-def _new_pna_pipeline(augmenter: Augmenter = None) -> PNAPipeline:
-    return PNAPipeline(augmenter=augmenter)
+def _new_pna_pipeline(augmenter_kind: str = None, smiles: List[str] = None) -> PNAPipeline:
+    return PNAPipeline(augmenter_kind, smiles)
 
 
-def get_pipelines() -> Dict[str, Pipeline]:
+def get_pipelines(smiles: List[str]) -> Dict[str, Pipeline]:
     return {
         "ecfp:4": _new_vec_pipeline("ecfp:4"),
         "fcfp:4": _new_vec_pipeline(kind="fcfp:4"),
@@ -67,9 +66,9 @@ def get_pipelines() -> Dict[str, Pipeline]:
         "gin_supervised_infomax": _new_dgl_pipeline("gin_supervised_infomax"),
         "gin_supervised_edgepred": _new_dgl_pipeline("gin_supervised_edgepred"),
         "PNA": _new_pna_pipeline(),
-        "PNA-rnd-mask-aug": _new_pna_pipeline(RndAtomMaskAugmenter()),
-        "PNA-rnd-bond-aug": _new_pna_pipeline(RndBondDeleteAugmenter()),
-        "PNA-rnd-struct-aug": _new_pna_pipeline(RndMotifRemovalAugmenter()),
-        "PNA-rnd-comp-aug": _new_pna_pipeline([RndAtomMaskAugmenter(), RndBondDeleteAugmenter()]),
-        "PNA-rnd-one-off-aug": _new_pna_pipeline([RndAtomMaskAugmenter(), RndBondDeleteAugmenter()]),
+        "PNA-rnd-mask-aug": _new_pna_pipeline("rnd-mask"),
+        "PNA-rnd-bond-aug": _new_pna_pipeline("rnd-bond"),
+        "PNA-rnd-struct-aug": _new_pna_pipeline("rnd-struct", smiles),
+        "PNA-rnd-comp-aug": _new_pna_pipeline("rnd-comp"),
+        "PNA-rnd-one-off-aug": _new_pna_pipeline("rnd-one-off"),
     }

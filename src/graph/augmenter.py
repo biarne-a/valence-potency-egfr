@@ -1,5 +1,6 @@
 import math
 import random
+from builtins import Exception
 from copy import deepcopy
 from typing import Dict, List
 
@@ -61,8 +62,8 @@ class RndBondDeleteAugmenter:
 
 
 class RndMotifRemovalAugmenter:
-    def __init__(self, featurizer: PYGGraphTransformer, smiles: List[str], similarity_threshold: float = 0.6):
-        self._featurizer = featurizer
+    def __init__(self, transformer: PYGGraphTransformer, smiles: List[str], similarity_threshold: float = 0.6):
+        self._transformer = transformer
         self._sub_smiles_dict = self._build_subsmiles(smiles, similarity_threshold)
 
     def _build_subsmiles(self, smiles, similarity_threshold) -> Dict[str, List[str]]:
@@ -90,7 +91,7 @@ class RndMotifRemovalAugmenter:
             return data
 
         sub_smile = random.choice(sub_smiles)
-        return self._featurizer(sub_smile)
+        return self._transformer(sub_smile)
 
 
 class ComposableAugmenter(Augmenter):
@@ -125,3 +126,17 @@ class OneOfAugmenter(Augmenter):
 
         augmenter = random.choices(self._augmenters)[0]
         return augmenter.augment(data)
+
+
+def augmenter_factory(kind: str, transformer: PYGGraphTransformer = None, smiles: List[str] = None) -> Augmenter:
+    if kind == "rnd-mask":
+        return RndAtomMaskAugmenter()
+    if kind == "rnd-bond":
+        return RndBondDeleteAugmenter()
+    if kind == "rnd-struct":
+        return RndMotifRemovalAugmenter(transformer, smiles)
+    if kind == "rnd-comp":
+        return ComposableAugmenter([RndAtomMaskAugmenter(), RndBondDeleteAugmenter()])
+    if kind == "rnd-one-off":
+        return OneOfAugmenter([RndAtomMaskAugmenter(), RndBondDeleteAugmenter()])
+    raise Exception(f"Unknown augmenter kind: {kind}")

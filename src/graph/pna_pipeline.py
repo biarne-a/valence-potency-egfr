@@ -15,7 +15,7 @@ from torch_geometric.nn.models import PNA
 from torch_geometric.utils import degree
 from tqdm import tqdm
 
-from graph.augmenter import Augmenter
+from graph.augmenter import augmenter_factory
 from graph.mol_dataset import build_dataset
 from pipeline import Pipeline
 
@@ -31,7 +31,8 @@ class PNAPipeline(Pipeline):
         learning_rate: float = 5e-4,
         lr_step_size: int = 10,
         lr_gamma: float = 1.0,
-        augmenter: Augmenter = None,
+        augmenter_kind: str = None,
+        smiles: List[str] = None,
     ):
         self._transformer = PYGGraphTransformer(atom_featurizer=AtomCalculator(), bond_featurizer=EdgeMatCalculator())
         self._transformer.auto_self_loop()
@@ -39,7 +40,7 @@ class PNAPipeline(Pipeline):
         self._learning_rate = learning_rate
         self._lr_step_size = lr_step_size
         self._lr_gamma = lr_gamma
-        self._augmenter = augmenter
+        self._augmenter = augmenter_factory(augmenter_kind, self._transformer, smiles)
         self._model = None
 
     def transform_smiles(self, smiles: np.array) -> np.array:

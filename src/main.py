@@ -20,7 +20,7 @@ def silence_warnings():
 def main():
     smiles, y = load_and_prepare_dataset()
     smiles = preprocess_smiles(smiles)
-    transformers = get_pipelines()
+    transformers = get_pipelines(smiles)
     cv_results = cross_validate(smiles, y, transformers)
     logging.info("Cross validation performed")
     logging.info(f"Best model AUC: {cv_results.best_auc}")
