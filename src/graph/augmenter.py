@@ -1,3 +1,4 @@
+import logging
 import math
 import random
 from copy import deepcopy
@@ -66,6 +67,7 @@ class RndMotifRemovalAugmenter:
         self._sub_smiles_dict = self._build_subsmiles(smiles, similarity_threshold)
 
     def _build_subsmiles(self, smiles, similarity_threshold) -> Dict[str, List[str]]:
+        logging.info("Build molecule substructures cache for each smile")
         result = {}
         for smile in tqdm(smiles):
             mol = Chem.MolFromSmiles(smile)
