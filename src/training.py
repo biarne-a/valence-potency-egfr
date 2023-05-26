@@ -19,7 +19,7 @@ class TrainingResult:
         self.predictions = predictions
 
     @property
-    def best_transformer(self):
+    def best_pipeline(self):
         mean_test_aucs = self.results_df["Mean Test AUC"]
         best_row = self.results_df[mean_test_aucs == mean_test_aucs.max()]
         return best_row.index.values[0]
@@ -54,12 +54,12 @@ def _add_mean_test_auc(results) -> pd.DataFrame:
 
 def cross_validate(smiles: np.array, y: np.array, pipelines: Dict[str, Pipeline]) -> TrainingResult:
     """
-    Assess the best transformer to use for the prediction with scaffold cross validation.
+    Assess the best pipeline to use with scaffold cross validation.
     :param pipelines: Dictionary of pipelines that we want to assess for molecule featurization + modeling
     :param smiles: List of modules in their smile string representation
     :param y: The target we want to predict (pIC50 > 8)
-    :return: A TrainingResult instance from which we can extract the metric of interest (MAE in this case)
-    for each fold along with the best model and best metric value
+    :return: A TrainingResult instance from which we can extract the metric of interest (AUC in this case)
+    for each fold along with the associated predictions
     """
     scaffolds = _get_scaffolds(smiles)
     results = defaultdict(list)

@@ -24,9 +24,9 @@ def main():
     cv_results = cross_validate(smiles, y, transformers)
     logging.info("Cross validation performed")
     logging.info(f"Best model AUC: {cv_results.best_auc}")
-    logging.info(f"Best model Transformer: {cv_results.best_transformer}")
+    logging.info(f"Best pipeline: {cv_results.best_pipeline}")
     pickle.dump(cv_results, open("cv_results.df", "wb"))
-    logging.info("Best model saved on disk")
+    logging.info("Results saved on disk")
 
 
 if __name__ == "__main__":

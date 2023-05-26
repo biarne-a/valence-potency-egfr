@@ -1,4 +1,4 @@
-from typing import List
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
@@ -9,6 +9,7 @@ from molfeat.trans.graph.adj import PYGGraphTransformer
 from sklearn.metrics import roc_auc_score
 from torch.nn import BCELoss
 from torch.optim.lr_scheduler import StepLR
+from torch.utils.data import DataLoader
 from torch_geometric.data.data import Data
 from torch_geometric.nn import global_add_pool
 from torch_geometric.nn.models import PNA
@@ -51,10 +52,12 @@ class PNAPipeline(Pipeline):
         self._augmenter = augmenter_factory(augmenter_kind, self._transformer, smiles)
         self._model = None
 
-    def transform_smiles(self, smiles: np.array) -> np.array:
+    def transform_smiles(self, smiles: np.array) -> List[Data]:
         return self._transformer(smiles)
 
-    def split_data(self, X, y, train_indices, test_indices):
+    def split_data(
+        self, X: List[Data], y: List[int], train_indices: np.array, test_indices: np.array
+    ) -> Tuple[List[Data], List[Data], List[int], List[int]]:
         X_train = [X[i] for i in train_indices]
         X_test = [X[i] for i in test_indices]
         y_train = [y[i] for i in train_indices]
@@ -62,14 +65,14 @@ class PNAPipeline(Pipeline):
         return X_train, X_test, y_train, y_test
 
     @property
-    def num_atom_features(self):
+    def num_atom_features(self) -> int:
         return self._transformer.atom_dim
 
     @property
-    def num_bond_features(self):
+    def num_bond_features(self) -> int:
         return self._transformer.bond_dim
 
-    def _get_model(self, X: List[Data] = None):
+    def _get_model(self, X: List[Data] = None) -> PNA:
         if self._model is None:
             self._model = PNA(
                 in_channels=self.num_atom_features,
@@ -85,7 +88,7 @@ class PNAPipeline(Pipeline):
             )
         return self._model
 
-    def _get_degree(self, X: List[Data]):
+    def _get_degree(self, X: List[Data]) -> torch.Tensor:
         max_degree = -1
         for data in X:
             d = degree(data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long)
@@ -97,18 +100,19 @@ class PNAPipeline(Pipeline):
             deg += torch.bincount(d, minlength=deg.numel())
         return deg
 
-    def forward(self, data: Data):
+    def forward(self, data: Data) -> torch.Tensor:
         out = self._model(data.x, data.edge_index, edge_attr=data.edge_attr)
         out = global_add_pool(out, data.batch)
         return F.sigmoid(out)
 
-    def _compute_auc(self, y_hat, y_true):
+    def _compute_auc(self, y_hat: torch.Tensor, y_true: torch.Tensor) -> float:
         y_hat = torch.cat(y_hat).numpy()
         y_true = torch.cat(y_true).numpy()
-        train_auc = roc_auc_score(y_true, y_hat)
-        return train_auc
+        return roc_auc_score(y_true, y_hat)
 
-    def _train_one_epoch(self, loss_fn, model, optimizer, train_loader):
+    def _train_one_epoch(
+        self, loss_fn: BCELoss, model: PNA, optimizer: torch.optim.Adam, train_loader: DataLoader
+    ) -> Tuple[float, List[float], List[int]]:
         model.train()
         losses = []
         y_hat = []
@@ -126,7 +130,9 @@ class PNAPipeline(Pipeline):
             y_true.append(data.y)
         return np.mean(losses), y_hat, y_true
 
-    def _eval_one_epoch(self, loss_fn, model, test_loader):
+    def _eval_one_epoch(
+        self, loss_fn: BCELoss, model: PNA, test_loader: DataLoader
+    ) -> Tuple[float, List[float], List[int]]:
         model.eval()
         losses = []
         test_y_hat = []
@@ -143,7 +149,9 @@ class PNAPipeline(Pipeline):
                 test_y_true.append(data.y)
         return np.mean(losses), test_y_hat, test_y_true
 
-    def fit(self, X_train, y_train, X_test=None, y_test=None):
+    def fit(
+        self, X_train: List[Data], y_train: List[int], X_test: List[Data] = None, y_test: List[int] = None
+    ) -> Dict[str, List[float]]:
         train_loader = build_dataset(
             self._transformer, X_train, y_train, self._augmenter, shuffle=True, batch_size=self._batch_size
         )
@@ -185,12 +193,9 @@ class PNAPipeline(Pipeline):
                     pbar.set_description(
                         f"Epoch {epoch} - Train Loss {mean_train_loss:.3f} - AUC Train {train_auc:.3f} "
                     )
-        return {
-            "train_aucs": train_aucs,
-            "test_aucs": test_aucs
-        }
+        return {"train_aucs": train_aucs, "test_aucs": test_aucs}
 
-    def predict_proba(self, X_test, y_test):
+    def predict_proba(self, X_test: List[Data], y_test: List[int]) -> np.array:
         test_loader = build_dataset(self._transformer, X_test, y_test, shuffle=False)
         model = self._get_model()
         model.eval()

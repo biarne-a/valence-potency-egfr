@@ -23,7 +23,7 @@ class VecCatBoostPipeline(Pipeline):
         features, indices = self.mol_transformer(smiles, ignore_errors=True)
         return np.array(features)[indices]
 
-    def fit(self, X_train, y_train):
+    def fit(self, X_train, y_train, X_test=None, y_test=None):
         return self.model.fit(X_train, y_train)
 
     def predict_proba(self, X_test, y_test):
