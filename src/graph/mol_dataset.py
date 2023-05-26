@@ -1,4 +1,3 @@
-
 import numpy as np
 import torch
 from molfeat.trans.graph.adj import PYGGraphTransformer
