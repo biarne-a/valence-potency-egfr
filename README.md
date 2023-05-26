@@ -29,7 +29,7 @@ and bonds levels. Once again we rely on the molfeat library to encode the atom a
 the bonds into vectors that are used by the Graph Neural Network.
 
 In the first approach, when we featurize the molecule we explicitely rely on the
-expert knowledge included into the featurizers where as in the second approach, the
+expert knowledge included into the featurizers whereas in the second approach, the
 feature engineering is performed by the neural network.
 
 # Installation
@@ -39,7 +39,7 @@ If mamba is installed on your system, simply run the following command:
 ```
 make install
 ```
-This will create a conda/mamba environment named `egfr` with all dependencies installed.
+This will create a mamba environment named `egfr` with all dependencies installed.
 
 You can then activate the environment with the following command:
 ```
