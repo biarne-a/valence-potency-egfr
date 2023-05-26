@@ -67,7 +67,7 @@ We attempted with the following approaches:
 * ChemBERTa-77M-MLM + Catboost
 * GIN neural network model pre-trained with mutual information maximisation + Catboost
 * GIN neural network model pre-trained with masked modelling + Catboost
-* GIN neural network model pre-trained with supervised learning and edge prediction + Catbbost
+* GIN neural network model pre-trained with supervised learning and edge prediction + Catboost
 * PNA (Graph Neural Network)
 
 The graph deep learning model (PNA) did not outperform the combination of the morgan 
