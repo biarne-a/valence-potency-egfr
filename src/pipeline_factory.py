@@ -53,7 +53,7 @@ def _new_dgl_pipeline(kind) -> VecCatBoostPipeline:
 
 
 def _new_pna_pipeline(augmenter_kind: str = None, smiles: List[str] = None) -> PNAPipeline:
-    return PNAPipeline(augmenter_kind, smiles)
+    return PNAPipeline(augmenter_kind=augmenter_kind, smiles=smiles)
 
 
 def get_pipelines(smiles: List[str]) -> Dict[str, Pipeline]:
