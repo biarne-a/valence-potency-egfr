@@ -66,9 +66,4 @@ def get_pipelines(smiles: List[str]) -> Dict[str, Pipeline]:
         "gin_supervised_infomax": _new_dgl_pipeline("gin_supervised_infomax"),
         "gin_supervised_edgepred": _new_dgl_pipeline("gin_supervised_edgepred"),
         "PNA": _new_pna_pipeline(),
-        "PNA-rnd-mask-aug": _new_pna_pipeline("rnd-mask"),
-        "PNA-rnd-bond-aug": _new_pna_pipeline("rnd-bond"),
-        "PNA-rnd-struct-aug": _new_pna_pipeline("rnd-struct", smiles),
-        "PNA-rnd-comp-aug": _new_pna_pipeline("rnd-comp"),
-        "PNA-rnd-one-off-aug": _new_pna_pipeline("rnd-one-off"),
     }
