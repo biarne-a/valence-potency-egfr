@@ -175,6 +175,10 @@ class PNAPipeline(Pipeline):
                     pbar.set_description(
                         f"Epoch {epoch} - Train Loss {mean_train_loss:.3f} - AUC Train {train_auc:.3f} "
                     )
+        return {
+            "train_aucs": train_aucs,
+            "test_aucs": test_aucs
+        }
 
     def predict_proba(self, X_test, y_test):
         test_loader = build_dataset(self._transformer, X_test, y_test, shuffle=False)
