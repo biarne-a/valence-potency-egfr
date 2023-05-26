@@ -76,8 +76,8 @@ class PNAPipeline(Pipeline):
     def num_bond_features(self) -> int:
         return self._transformer.bond_dim
 
-    def _get_model(self, X: List[Data] = None) -> PNA:
-        if self._model is None:
+    def _get_model(self, X: List[Data] = None, reset: bool = False) -> PNA:
+        if self._model is None or reset:
             self._model = PNA(
                 in_channels=self.num_atom_features,
                 hidden_channels=self._hidden_channels,
@@ -166,7 +166,7 @@ class PNAPipeline(Pipeline):
         train_aucs = []
         test_aucs = []
         loss_fn = BCELoss()
-        model = self._get_model(X_train)
+        model = self._get_model(X_train, reset=True)
         optimizer = torch.optim.Adam(model.parameters(), lr=self._learning_rate)
         lr_scheduler = StepLR(optimizer, step_size=self._lr_step_size, gamma=self._lr_gamma)
         with tqdm(range(self._num_epochs)) as pbar:
