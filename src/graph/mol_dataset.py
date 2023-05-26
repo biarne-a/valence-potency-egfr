@@ -37,6 +37,6 @@ def build_dataset(
     augmenter: Augmenter = None,
     shuffle: bool = False,
     batch_size=32,
-) -> Tuple[MolDataset, DataLoader]:
+) -> DataLoader:
     dt = MolDataset(transformer, X, y, augmenter)
     return DataLoader(dt, batch_size=batch_size, shuffle=shuffle, collate_fn=dt.collate_fn(return_pair=False))

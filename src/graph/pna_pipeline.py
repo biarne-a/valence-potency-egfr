@@ -28,6 +28,10 @@ class PNAPipeline(Pipeline):
     def __init__(
         self,
         num_epochs: int = 120,
+        batch_size: int = 32,
+        hidden_channels: int = 64,
+        num_layers: int = 2,
+        dropout: float = 0.2,
         learning_rate: float = 5e-4,
         lr_step_size: int = 10,
         lr_gamma: float = 1.0,
@@ -37,6 +41,10 @@ class PNAPipeline(Pipeline):
         self._transformer = PYGGraphTransformer(atom_featurizer=AtomCalculator(), bond_featurizer=EdgeMatCalculator())
         self._transformer.auto_self_loop()
         self._num_epochs = num_epochs
+        self._batch_size = batch_size
+        self._hidden_channels = hidden_channels
+        self._num_layers = num_layers
+        self._dropout = dropout
         self._learning_rate = learning_rate
         self._lr_step_size = lr_step_size
         self._lr_gamma = lr_gamma
@@ -65,10 +73,10 @@ class PNAPipeline(Pipeline):
         if self._model is None:
             self._model = PNA(
                 in_channels=self.num_atom_features,
-                hidden_channels=64,
-                num_layers=2,
+                hidden_channels=self._hidden_channels,
+                num_layers=self._num_layers,
                 out_channels=1,
-                dropout=0.2,
+                dropout=self._dropout,
                 act="relu",
                 edge_dim=self.num_bond_features,
                 aggregators=self.PNA_AGGREGATORS,
@@ -136,10 +144,12 @@ class PNAPipeline(Pipeline):
         return np.mean(losses), test_y_hat, test_y_true
 
     def fit(self, X_train, y_train, X_test=None, y_test=None):
-        train_loader = build_dataset(self._transformer, X_train, y_train, self._augmenter, shuffle=True)
+        train_loader = build_dataset(
+            self._transformer, X_train, y_train, self._augmenter, shuffle=True, batch_size=self._batch_size
+        )
         test_loader = None
         if X_test is not None:
-            test_loader = build_dataset(self._transformer, X_test, y_test, shuffle=False)
+            test_loader = build_dataset(self._transformer, X_test, y_test, shuffle=False, batch_size=self._batch_size)
 
         train_aucs = []
         test_aucs = []
