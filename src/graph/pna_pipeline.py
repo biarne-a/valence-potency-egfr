@@ -53,7 +53,11 @@ class PNAPipeline(Pipeline):
         self._model = None
 
     def transform_smiles(self, smiles: np.array) -> List[Data]:
-        return self._transformer(smiles)
+        transformed_mols = self._transformer(smiles)
+        # Dynamically attach the smile to each transformed molecule (needed by one of the augmenters)
+        for mol, smile in zip(transformed_mols, smiles):
+            mol.smile = smile
+        return transformed_mols
 
     def split_data(
         self, X: List[Data], y: List[int], train_indices: np.array, test_indices: np.array
