@@ -27,7 +27,7 @@ class PNAPipeline(Pipeline):
 
     def __init__(
         self,
-        num_epochs: int = 500,
+        num_epochs: int = 120,
         learning_rate: float = 5e-4,
         lr_step_size: int = 10,
         lr_gamma: float = 1.0,
